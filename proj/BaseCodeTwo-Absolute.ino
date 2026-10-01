@@ -85,13 +85,16 @@ void loop()
 
   if (finish == 1)
   {                // this part of the code is for displaying the result
+    abs.update();  // updating the absolute sensor reading
     delay(500);    // half second delay
     rep = rep + 1; // increasing the repetition indicator
     Serial.print("shaft possition from optical absolute sensor from home position: ");
-    Serial.println(0);
+    Serial.println(abs.getAngle());
 
     Serial.print("shaft displacement from optical absolute sensor: ");
-    Serial.println(0);
+    Serial.print(abs.getDisplacement());
+    Serial.print(" degrees, Direction: ");
+    Serial.println(abs.getDirection() == Direction::CW ? "CW" : "CCW"); // displaying the displacement and direction of rotation from absolute sensor
 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
     Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin

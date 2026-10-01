@@ -15,13 +15,17 @@ class Absolute
 {
 public:
    // Constructor
-   Absolute(u_int8 firstPin, int threshold, int resolution)
-       : firstPin(firstPin), threshold(threshold), resolution(resolution) {};
+   Absolute(int threshold, int resolution) {};
    // Getters
    float getAngle()
    {
       return currentPos;
    }
+   float getDisplacement()
+   {
+      return displacement;
+   }
+   )
    Direction getDirection()
    {
       return direction;
@@ -32,8 +36,8 @@ private:
    int resolution;
    float currentPos;
    float previousPos;
+   float displacement;
    Direction direction;
-   u_int8 firstPin;
    void readAnalogPins();
    void greyToBinary();
    void binaryToAngle();
