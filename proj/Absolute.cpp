@@ -31,7 +31,7 @@ void Absolute::update()
 // Reads the voltage value of the analog pins 0-4, compares it with a threshold and creates a 5 bit greycode number (1 for rach pin above threshhold 0 for each pin below threshold).
 void Absolute::readAnalogPins()
 {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
         int pinValue = analogRead(A0 + i);
         if (pinValue > threshold)
