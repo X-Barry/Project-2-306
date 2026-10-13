@@ -4,6 +4,8 @@
    representation and finally to a degree angle.
 */
 
+#pragma once
+
 enum class Direction
 {
    CW = 1,
@@ -15,7 +17,11 @@ class Absolute
 {
 public:
    // Constructor
-   Absolute(int threshold, int resolution) {};
+   Absolute(int threshold, int resolution);
+   // Destructor
+   ~Absolute() {};
+   // Reads the pins and recalculates angle, displacement and direction
+   void update();
    // Getters
    float getAngle()
    {
@@ -25,7 +31,6 @@ public:
    {
       return displacement;
    }
-   )
    Direction getDirection()
    {
       return direction;
@@ -41,4 +46,4 @@ private:
    void readAnalogPins();
    void greyToBinary();
    void binaryToAngle();
-}
+};

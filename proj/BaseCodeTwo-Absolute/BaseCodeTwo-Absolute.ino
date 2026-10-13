@@ -17,8 +17,8 @@ int rep = 1;    // Repetition indicator
 void setup()
 {
 
-  Absolute abs(0, 30, 5); // Create an instance of the Absolute class with firstPin=0, threshold=512, resolution=5
-
+  Absolute abs(100, 5); // Create an instance of the Absolute class with firstPin=0, threshold=512, resolution=5
+  abs.update();         // Update the absolute sensor reading
   Serial.begin(250000); // Baud rate of communication
 
   Serial.println("Enter the desired rotation in degree.");

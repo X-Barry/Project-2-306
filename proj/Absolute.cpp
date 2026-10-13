@@ -1,12 +1,11 @@
 #include "Absolute.h"
 
-#include <bitset>
 #include <Arduino.h>
 
 /* Absolute encoder using signals from LED/PT pairs for position sensing of a rotary motor */
 
 // Global Variables
-std::bitset<5> bitPosition;
+uint8_t bitPosition; // one bit per LED/PT pair, bit 0 = A1 ... bit 4 = A5
 
 // Constructor for Absolute class, initializes the current position, threshold, and resolution.
 Absolute::Absolute(int threshold, int resolution)
@@ -28,19 +27,19 @@ void Absolute::update()
     binaryToAngle();
 }
 
-// Reads the voltage value of the analog pins 0-4, compares it with a threshold and creates a 5 bit greycode number (1 for rach pin above threshhold 0 for each pin below threshold).
+// Reads the voltage value of the analog pins A1-A5, compares it with a threshold and creates a 5 bit greycode number (1 for rach pin above threshhold 0 for each pin below threshold). A1 is the LSB, A5 the MSB.
 void Absolute::readAnalogPins()
 {
     for (int i = 0; i < 5; i++)
     {
-        int pinValue = analogRead(A0 + i);
+        int pinValue = analogRead(A1 + i);
         if (pinValue > threshold)
         {
-            bitPosition.set(i);
+            bitPosition |= (1 << i);
         }
         else
         {
-            bitPosition.reset(i);
+            bitPosition &= ~(1 << i);
         }
     }
     return;
@@ -49,8 +48,7 @@ void Absolute::readAnalogPins()
 // Converts greycode number to a 5 bit binary number.
 void Absolute::greyToBinary()
 {
-    std::bitset<5> temp = bitPosition;
-    while ((temp >>= 1).any())
+    for (uint8_t temp = bitPosition >> 1; temp; temp >>= 1)
     {
         bitPosition ^= temp;
     }
@@ -61,10 +59,10 @@ void Absolute::greyToBinary()
 void Absolute::binaryToAngle()
 {
     previousPos = currentPos;
-    float angleResolution = 360.0 / 2 ^ resolution; // 32 positions for 5 bit binary number
-    currentPos = bitPosition.to_ulong() * angleResolution;
+    float angleResolution = 360.0 / (1 << resolution); // 32 positions for 5 bit binary number
+    currentPos = bitPosition * angleResolution;
 
-    int diff = (previousPos - currentPos + 360) % 360; // 0–359
+    int diff = ((int)(currentPos - previousPos) + 360) % 360; // 0–359
 
     if (diff == 0)
     {
