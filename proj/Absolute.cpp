@@ -27,13 +27,15 @@ void Absolute::update()
     binaryToAngle();
 }
 
-// Reads the voltage value of the analog pins A1-A5, compares it with a threshold and creates a 5 bit greycode number (1 for rach pin above threshhold 0 for each pin below threshold). A1 is the LSB, A5 the MSB.
+// Reads the voltage value of the analog pins A1-A5, compares it with a threshold and creates a 5 bit greycode number.
+// The wheel (wheel_gray5.dxf) is drawn with the WHITE sectors as logic 1, and white reads BELOW the threshold,
+// so a pin below threshold sets the bit. A1 is the LSB, A5 the MSB.
 void Absolute::readAnalogPins()
 {
     for (int i = 0; i < 5; i++)
     {
         int pinValue = analogRead(A1 + i);
-        if (pinValue > threshold)
+        if (pinValue < threshold)
         {
             bitPosition |= (1 << i);
         }
@@ -62,7 +64,7 @@ void Absolute::binaryToAngle()
     float angleResolution = 360.0 / (1 << resolution); // 32 positions for 5 bit binary number
     currentPos = bitPosition * angleResolution;
 
-    int diff = ((int)(currentPos - previousPos) + 360) % 360; // 0–359
+    float diff = fmod(currentPos - previousPos + 360.0, 360.0); // 0–359.99, keeps the fractional degrees
 
     if (diff == 0)
     {
