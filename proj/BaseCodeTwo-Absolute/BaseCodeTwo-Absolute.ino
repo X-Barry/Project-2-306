@@ -11,14 +11,13 @@ float eri;      // Integral error for PI controller
 int t = 0;  // time in ms
 int t0 = 0; // memory for time in ms
 
-int finish = 0; // finish indicator
-int rep = 1;    // Repetition indicator
+int finish = 0;            // finish indicator
+int rep = 1;               // Repetition indicator
+Absolute absolute(100, 5); // Create an instance of the Absolute class with firstPin=0, threshold=512, resolution=5
 
 void setup()
 {
-
-  Absolute abs(100, 5); // Create an instance of the Absolute class with firstPin=0, threshold=512, resolution=5
-  abs.update();         // Update the absolute sensor reading
+  absolute.update();    // Update the absolute sensor reading
   Serial.begin(250000); // Baud rate of communication
 
   Serial.println("Enter the desired rotation in degree.");
@@ -84,23 +83,23 @@ void loop()
   }
 
   if (finish == 1)
-  {                // this part of the code is for displaying the result
-    abs.update();  // updating the absolute sensor reading
-    delay(500);    // half second delay
-    rep = rep + 1; // increasing the repetition indicator
+  {                    // this part of the code is for displaying the result
+    absolute.update(); // updating the absolute sensor reading
+    delay(500);        // half second delay
+    rep = rep + 1;     // increasing the repetition indicator
     Serial.print("shaft possition from optical absolute sensor from home position: ");
-    Serial.println(abs.getAngle());
+    Serial.println(absolute.getAngle());
 
     Serial.print("shaft displacement from optical absolute sensor: ");
-    Serial.print(abs.getDisplacement());
+    Serial.print(absolute.getDisplacement());
     Serial.print(" degrees, Direction: ");
-    Serial.println(abs.getDirection() == Direction::CW ? "CW" : "CCW"); // displaying the displacement and direction of rotation from absolute sensor
+    Serial.println(absolute.getDirection() == Direction::CW ? "CW" : "CCW"); // displaying the displacement and direction of rotation from absolute sensor
 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
     Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin
                                    // encoder so to turn it to degre we can use this formula (s * 360 / 228), "s" is the number of  built-in encoder counts
 
-    float Error = 0 - s * 360 / 228;
+    float Error = absolute.getDisplacement() - s * 360 / 228;
     Serial.print("Error :");
     Serial.println(Error); // displaying error
     Serial.println();
