@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     {
       sim::shaft_deg += 0.25 * sign;
       enc.update();
+      enc.update(); // a reading is only used once two updates agree on it
       int pos = sim::true_position();
       expect(fabs(enc.getAngle() - pos * step) < 1e-3, "angle", enc.getAngle(), pos * step);
       if (pos != prev)
@@ -58,23 +59,61 @@ int main(int argc, char **argv)
   }
 
   // 2. Jump between every pair of positions (what happens between two update() calls in the sketch).
+  //    Jumps up to MAX_STEP_DEG are counted; bigger ones are glitches: ignored until the same reading
+  //    has come back CONFIRM_READS times, then the angle follows but the displacement doesn't.
   int c0 = checks, f0 = fails;
   for (int a = 0; a < n; a++)
     for (int b = 0; b < n; b++)
     {
       sim::shaft_deg = (a + 0.5) * step;
-      enc.update();
+      for (int i = 0; i < Absolute::CONFIRM_READS; i++)
+        enc.update();
       enc.resetDisplacement();
       sim::shaft_deg = (b + 0.5) * step;
       enc.update();
+      enc.update();
       int d = ((b - a) % n + n) % n;
-      double want = (d <= n / 2 ? d : n - d) * step;
+      double moved = (d <= n / 2 ? d : n - d) * step;
+      bool real = moved <= Absolute::MAX_STEP_DEG;
+      double want = real ? moved : 0;
       expect(fabs(enc.getDisplacement() - want) < 1e-3, "jump", enc.getDisplacement(), want);
+      expect(fabs(enc.getAngle() - (real ? b : a) * step) < 1e-3, "jump angle", enc.getAngle(), (real ? b : a) * step);
+      for (int i = 2; i < Absolute::CONFIRM_READS; i++)
+        enc.update();
+      expect(fabs(enc.getAngle() - b * step) < 1e-3, "resync", enc.getAngle(), b * step);
+      expect(fabs(enc.getDisplacement() - want) < 1e-3, "resync disp", enc.getDisplacement(), want);
     }
   printf("Jumps between all %d x %d positions: %d/%d checks passed\n", n, n, checks - c0 - (fails - f0), checks - c0);
-  printf("  note: update() can't tell a %.0f deg move from a %.0f deg one the other way; a move of more than\n"
-         "  180 deg between two update() calls is counted as the shorter move in the opposite direction,\n"
-         "  so the sketch must call update() often while the shaft turns.\n", 270.0, 90.0);
+  printf("  note: a jump of more than %.0f deg between two update() calls is taken as a sensor glitch, so the\n"
+         "  sketch must call update() often while the shaft turns.\n", Absolute::MAX_STEP_DEG);
+
+  // 3. Sensor dropouts while turning: every pin reads black (code 0) for single updates, as seen on the
+  //    rig. Before the glitch filter, three dropouts at 180 deg turned a 45 deg move into "1215 degrees CCW".
+  c0 = checks, f0 = fails;
+  for (double start = step / 4; start < 360; start += step / 2) // never on a sector edge
+  {
+    sim::shaft_deg = start;
+    for (int i = 0; i < Absolute::CONFIRM_READS; i++)
+      enc.update();
+    enc.resetDisplacement();
+    int prev = sim::true_position(), sectors = 0;
+    for (int k = 1; k <= 180; k++) // 90 deg in 0.5 deg steps
+    {
+      sim::shaft_deg += 0.5;
+      if (k % 7 == 3)
+        sim::dark_reads = 5; // one whole update() reads dark
+      enc.update();
+      enc.update();
+      int pos = sim::true_position();
+      sectors += pos != prev;
+      prev = pos;
+    }
+    sim::dark_reads = 5; // and the final reading drops out too
+    enc.update();
+    expect(fabs(enc.getDisplacement() - sectors * step) < 1e-3, "dropouts", enc.getDisplacement(), sectors * step);
+    expect(enc.getDirection() == Direction::CW, "dropout dir", (int)enc.getDirection(), 1);
+  }
+  printf("90 deg moves with sensor dropouts, from %d start angles: %d/%d checks passed\n", 2 * n, checks - c0 - (fails - f0), checks - c0);
 
   printf("\n%s: %d of %d checks passed\n", fails ? "ABSOLUTE LIBRARY FAILED" : "ABSOLUTE LIBRARY OK", checks - fails, checks);
   return fails ? 1 : 0;

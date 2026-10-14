@@ -19,6 +19,7 @@ namespace sim
   int pin_lsb = A1;              // A1 = bit 0 (outer track) ... A5 = bit 4 (inner track)
   bool forward_increases = true; // pin 3 LOW spins the wheel so its position counts up
   bool log_samples = false;
+  int dark_reads = 0;            // fault injection: the next N analogRead() calls read black (all sensors dark)
 
   const uint8_t PIN_PWM = 6, PIN_DIR = 3, PIN_ENC_A = 7, PIN_ENC_B = 8;
   double shaft_deg = 0, speed_dps = 0;
@@ -129,6 +130,7 @@ int analogRead(uint8_t pin)
     return 0;
   }
   if (bit < 0 || bit >= (int)track_r.size()) return 0;
+  if (dark_reads > 0) { dark_reads--; return (int)black_counts; }
   return is_clear((int)track_r.size() - 1 - bit, shaft_deg * M_PI / 180) ? (int)white_counts : (int)black_counts;
 }
 

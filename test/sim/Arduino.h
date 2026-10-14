@@ -59,6 +59,7 @@ namespace sim
 {
   extern double black_counts, white_counts, max_rpm, deadband_pwm, tau_s;
   extern int counts_per_rev, pin_lsb;
+  extern int dark_reads;                   // fault injection: next N analogRead() calls read black
   extern bool forward_increases, log_samples;
   extern double shaft_deg;                 // true shaft angle; + = wheel position counts up
   extern unsigned long long now_us, limit_us;

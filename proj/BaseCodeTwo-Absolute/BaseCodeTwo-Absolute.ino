@@ -15,6 +15,7 @@ int tAbs = 0; // time of the last absolute sensor reading in ms
 int finish = 0;            // finish indicator
 int rep = 1;               // Repetition indicator
 Absolute absolute(100, 5); // Create an instance of the Absolute class with threshold=100, resolution=5 (pins A1-A5)
+float absError[10];        // unsigned difference |absolute - builtin| of each of the 10 positionings
 
 void setup()
 {
@@ -51,8 +52,8 @@ void loop()
   tAbs = t;
   while (t < t0 + 4000 && rep <= 10) // let the code to ran for 4 seconds each with repetitions of 10
   {
-    if (t - tAbs >= 5) // reading the absolute sensor every 5ms so it can follow moves of more than 180 degrees
-    {
+    if (t - tAbs >= 5 && t % 10 != 0) // reading the absolute sensor every 5ms so it can follow moves of more than 180 degrees
+    {                                 // (never in the PI controller's millisecond, so the base code's timing isn't stretched)
       absolute.update();
       tAbs = t;
     }
@@ -94,7 +95,6 @@ void loop()
 
   if (finish == 1)
   {                    // this part of the code is for displaying the result
-    analogWrite(6, 0); // turning off the motor before the final reading
     absolute.update(); // final absolute sensor reading, at the same moment the builtin encoder stopped counting
     delay(500);        // half second delay
     rep = rep + 1;     // increasing the repetition indicator
@@ -107,6 +107,11 @@ void loop()
     Serial.println(absolute.getDirection() == Direction::CW    ? "CW"
                    : absolute.getDirection() == Direction::CCW ? "CCW"
                                                                : "NONE"); // displaying the displacement and direction of rotation from absolute sensor
+    if (absolute.getRejected() > 0)
+    {
+      Serial.print("WARNING absolute sensor glitch readings ignored: "); // readings that jumped too far to be real motion
+      Serial.println(absolute.getRejected());                           // (check the LED/PT wiring, supply and threshold)
+    }
 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
     Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin
@@ -116,8 +121,29 @@ void loop()
     Serial.print("Error :");
     Serial.println(Error); // displaying error
     Serial.println();
+    absError[rep - 2] = abs(Error); // rep was already increased above, so this positioning is rep - 2 (0-9)
     s = 0;
     finish = 0;
+
+    if (rep > 10) // after the 10th positioning: average unsigned difference over the 8 best of 10
+    {
+      float worst1 = 0, worst2 = 0, sum = 0; // the two largest differences are left out
+      for (int i = 0; i < 10; i++)
+      {
+        sum = sum + absError[i];
+        if (absError[i] > worst1)
+        {
+          worst2 = worst1;
+          worst1 = absError[i];
+        }
+        else if (absError[i] > worst2)
+        {
+          worst2 = absError[i];
+        }
+      }
+      Serial.print("Average unsigned error over the best 8 of 10 positionings: ");
+      Serial.println((sum - worst1 - worst2) / 8);
+    }
   }
   analogWrite(6, 0); // turning off the motor
 }
