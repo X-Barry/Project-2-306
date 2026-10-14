@@ -107,7 +107,7 @@ void loop()
     Serial.println(absolute.getDirection() == Direction::CW    ? "CW"
                    : absolute.getDirection() == Direction::CCW ? "CCW"
                                                                : "NONE"); // displaying the displacement and direction of rotation from absolute sensor
-
+ 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
     Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin
                                    // encoder so to turn it to degre we can use this formula (s * 360 / 228), "s" is the number of  built-in encoder counts
