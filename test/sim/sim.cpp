@@ -129,9 +129,6 @@ int analogRead(uint8_t pin)
     return 0;
   }
   if (bit < 0 || bit >= (int)track_r.size()) return 0;
-  if (log_samples && bit == 0)
-    printf("[sim %8.3f s] sensors sampled: true shaft %.2f deg = wheel position %d -> expect getAngle() = %.2f\n",
-           now_us * 1e-6, shaft_deg, true_position(), true_position() * 360.0 / positions());
   return is_clear((int)track_r.size() - 1 - bit, shaft_deg * M_PI / 180) ? (int)white_counts : (int)black_counts;
 }
 
@@ -188,7 +185,10 @@ void SerialPort::print(const char *s)
 {
   for (; *s; s++)
   {
-    if (line_start) printf("[%8.3f s] ", now_us * 1e-6);
+    if (line_start && log_samples) // tag each line with the true shaft position to compare against
+      printf("[%8.3f s | true shaft %8.2f deg, pos %2d] ", now_us * 1e-6, shaft_deg, true_position());
+    else if (line_start)
+      printf("[%8.3f s] ", now_us * 1e-6);
     putchar(*s);
     line_start = *s == '\n';
     advance(40); // 250000 baud

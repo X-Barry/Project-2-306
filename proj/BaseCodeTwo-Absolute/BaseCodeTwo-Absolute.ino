@@ -10,14 +10,15 @@ float eri;      // Integral error for PI controller
 
 int t = 0;  // time in ms
 int t0 = 0; // memory for time in ms
+int tAbs = 0; // time of the last absolute sensor reading in ms
 
 int finish = 0;            // finish indicator
 int rep = 1;               // Repetition indicator
-Absolute absolute(100, 5); // Create an instance of the Absolute class with firstPin=0, threshold=512, resolution=5
+Absolute absolute(100, 5); // Create an instance of the Absolute class with threshold=100, resolution=5 (pins A1-A5)
 
 void setup()
 {
-  absolute.update();    // Update the absolute sensor reading
+  absolute.update();    // First absolute sensor reading (home position)
   Serial.begin(250000); // Baud rate of communication
 
   Serial.println("Enter the desired rotation in degree.");
@@ -42,10 +43,19 @@ void loop()
 {
   // put your main code here, to run repeatedly:
 
+  absolute.update();            // reading the absolute sensor at the start of the run
+  absolute.resetDisplacement(); // measuring this run's displacement from here
+
   t = millis();                      // reading time
   t0 = t;                            // sving the current time in memory
+  tAbs = t;
   while (t < t0 + 4000 && rep <= 10) // let the code to ran for 4 seconds each with repetitions of 10
   {
+    if (t - tAbs >= 5) // reading the absolute sensor every 5ms so it can follow moves of more than 180 degrees
+    {
+      absolute.update();
+      tAbs = t;
+    }
 
     if (t % 10 == 0) // PI controller that runs every 10ms
     {
@@ -84,7 +94,8 @@ void loop()
 
   if (finish == 1)
   {                    // this part of the code is for displaying the result
-    absolute.update(); // updating the absolute sensor reading
+    analogWrite(6, 0); // turning off the motor before the final reading
+    absolute.update(); // final absolute sensor reading, at the same moment the builtin encoder stopped counting
     delay(500);        // half second delay
     rep = rep + 1;     // increasing the repetition indicator
     Serial.print("shaft possition from optical absolute sensor from home position: ");
@@ -93,7 +104,9 @@ void loop()
     Serial.print("shaft displacement from optical absolute sensor: ");
     Serial.print(absolute.getDisplacement());
     Serial.print(" degrees, Direction: ");
-    Serial.println(absolute.getDirection() == Direction::CW ? "CW" : "CCW"); // displaying the displacement and direction of rotation from absolute sensor
+    Serial.println(absolute.getDirection() == Direction::CW    ? "CW"
+                   : absolute.getDirection() == Direction::CCW ? "CCW"
+                                                               : "NONE"); // displaying the displacement and direction of rotation from absolute sensor
 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
     Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin

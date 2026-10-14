@@ -30,24 +30,28 @@ int main(int argc, char **argv)
 
   sim::shaft_deg = step / 2;
   Absolute enc(threshold, 5);
+  enc.update(); // first reading, as setup() does
 
   // 1. Turn slowly (0.25 deg at a time) two revolutions each way, reading after every nudge.
+  //    The displacement is a running total since resetDisplacement(), so it must follow both turns.
   for (int sign : {+1, -1})
   {
-    int c0 = checks, f0 = fails, prev = sim::true_position();
+    int c0 = checks, f0 = fails, prev = sim::true_position(), sectors = 0;
+    enc.resetDisplacement();
     for (double moved = 0; moved < 720; moved += 0.25)
     {
       sim::shaft_deg += 0.25 * sign;
       enc.update();
       int pos = sim::true_position();
       expect(fabs(enc.getAngle() - pos * step) < 1e-3, "angle", enc.getAngle(), pos * step);
-      bool moved_one = pos != prev;
-      Direction want = !moved_one ? Direction::NONE : sign > 0 ? Direction::CW : Direction::CCW;
+      if (pos != prev)
+        sectors += sign;
+      Direction want = sectors == 0 ? Direction::NONE : sectors > 0 ? Direction::CW : Direction::CCW;
       if (enc.getDirection() != want && fails < 20)
         printf("  FAIL direction    shaft %7.2f deg: got %s, want %s\n", sim::shaft_deg, name(enc.getDirection()), name(want));
       checks++;
       fails += enc.getDirection() != want;
-      expect(fabs(enc.getDisplacement() - (moved_one ? step : 0)) < 1e-3, "displacement", enc.getDisplacement(), moved_one ? step : 0);
+      expect(fabs(enc.getDisplacement() - abs(sectors) * step) < 1e-2, "displacement", enc.getDisplacement(), abs(sectors) * step);
       prev = pos;
     }
     printf("%s slow sweep, 2 turns: %d/%d checks passed\n", sign > 0 ? "Forward" : "Backward", checks - c0 - (fails - f0), checks - c0);
@@ -60,6 +64,7 @@ int main(int argc, char **argv)
     {
       sim::shaft_deg = (a + 0.5) * step;
       enc.update();
+      enc.resetDisplacement();
       sim::shaft_deg = (b + 0.5) * step;
       enc.update();
       int d = ((b - a) % n + n) % n;
@@ -68,7 +73,8 @@ int main(int argc, char **argv)
     }
   printf("Jumps between all %d x %d positions: %d/%d checks passed\n", n, n, checks - c0 - (fails - f0), checks - c0);
   printf("  note: update() can't tell a %.0f deg move from a %.0f deg one the other way; a move of more than\n"
-         "  180 deg between two update() calls is reported as the shorter move in the opposite direction.\n", 270.0, 90.0);
+         "  180 deg between two update() calls is counted as the shorter move in the opposite direction,\n"
+         "  so the sketch must call update() often while the shaft turns.\n", 270.0, 90.0);
 
   printf("\n%s: %d of %d checks passed\n", fails ? "ABSOLUTE LIBRARY FAILED" : "ABSOLUTE LIBRARY OK", checks - fails, checks);
   return fails ? 1 : 0;

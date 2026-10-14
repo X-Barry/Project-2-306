@@ -4,19 +4,18 @@
 
 /* Absolute encoder using signals from LED/PT pairs for position sensing of a rotary motor */
 
-// Global Variables
-uint8_t bitPosition; // one bit per LED/PT pair, bit 0 = A1 ... bit 4 = A5
-
 // Constructor for Absolute class, initializes the current position, threshold, and resolution.
+// The sensors are not read here: a global object is constructed before the Arduino core has
+// started the ADC, so analogRead() would return garbage. Call update() from setup() instead.
 Absolute::Absolute(int threshold, int resolution)
 {
     this->threshold = threshold;
     this->resolution = resolution;
+    this->bitPosition = 0;
+    this->hasReading = false;
     this->currentPos = 0.0;
     this->previousPos = 0.0;
-    this->displacement = 0.0;
-    this->direction = Direction::NONE;
-    update();
+    this->totalDisplacement = 0.0;
 }
 
 // Starts the process of reading the analog pins, converting to greycode, then to binary, and finally to an angle.
@@ -25,6 +24,12 @@ void Absolute::update()
     readAnalogPins();
     greyToBinary();
     binaryToAngle();
+}
+
+// Zeroes the displacement so it is measured from the current position.
+void Absolute::resetDisplacement()
+{
+    totalDisplacement = 0.0;
 }
 
 // Reads the voltage value of the analog pins A1-A5, compares it with a threshold and creates a 5 bit greycode number.
@@ -57,32 +62,34 @@ void Absolute::greyToBinary()
     return;
 }
 
-// Converts the 5 bit binary number to a 0-360 degree angle. And compares it with intial to detect CW or CCW rotation.
+// Converts the 5 bit binary number to a 0-360 degree angle, and adds the step since the previous
+// reading to the total displacement (CW positive). The step is taken as the shorter way round, so
+// the shaft must turn less than 180 degrees between two update() calls.
 void Absolute::binaryToAngle()
 {
     previousPos = currentPos;
     float angleResolution = 360.0 / (1 << resolution); // 32 positions for 5 bit binary number
     currentPos = bitPosition * angleResolution;
 
+    if (!hasReading)
+    {
+        // first reading: nothing to compare against yet
+        previousPos = currentPos;
+        hasReading = true;
+        return;
+    }
+
     float diff = fmod(currentPos - previousPos + 360.0, 360.0); // 0–359.99, keeps the fractional degrees
 
-    if (diff == 0)
+    if (diff < 180)
     {
-        // no movement
-        direction = Direction::NONE;
-        displacement = 0.0;
-    }
-    else if (diff < 180)
-    {
-        // angle increased by diff degrees (e.g. CW)
-        direction = Direction::CW;
-        displacement = diff;
+        // angle increased by diff degrees (e.g. CW), or no movement when diff == 0
+        totalDisplacement += diff;
     }
     else
     {
         // angle decreased by (360 - diff) degrees (e.g. CCW)
-        direction = Direction::CCW;
-        displacement = 360 - diff;
+        totalDisplacement -= 360 - diff;
     }
     return;
 }
