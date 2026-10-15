@@ -1,21 +1,22 @@
 /*
   QuadraturePerformance - automated performance test of the quadrature encoder.
 
-  Runs BaseCodeOne's 15 s speed test RUNS times for every speed in COMMANDS[], one after the
+  Runs BaseCodeOne's speed test RUNS times for every speed in COMMANDS[], one after the
   other, without resetting the board. The PI controller and the built-in encoder counting are
   copied from BaseCodeOne unchanged, so the motor behaves as in the demo. Only the 100 ms
-  "spontaneous speed" print is left out, to keep the output short.
+  "spontaneous speed" print is left out, to keep the output short, and each run stops after
+  10 s instead of 15 s (the 5-10 s window the demo assesses is the last one printed).
 
   How to use (Arduino IDE):
     1. Upload, open the Serial Monitor at 250000 baud.
-    2. Type 0 and press Enter to run the full sweep (+-40 to +-320 RPM, 3 runs each, about
-       15 minutes), or type one speed (e.g. -120) to test only that command.
+    2. Type 0 and press Enter to run the full sweep (+-40 to +-320 RPM, 1 run each, about
+       3 minutes), or type one speed (e.g. -120) to test only that command.
     3. When "# done" appears, copy everything from the Serial Monitor into a text file in
        performance_v2/data/ and run analyze.py.
 
   Output, one line every 5 s of each run ("own" = our quadrature encoder, error = own - builtin):
     QUAD,cmd_rpm,run,t_s,dir_cmd,dir_builtin,dir_own,builtin_rpm,own_rpm,error_rpm
-  t_s is the end of the 5 s window: t_s = 10 is the 5-10 s window that the demo assesses.
+  t_s is the end of the 5 s window (5 or 10): t_s = 10 is the 5-10 s window that the demo assesses.
 
   The optical encoder section below is a copy of demo/Quadrature. Copy it again if that changes.
 */
@@ -23,12 +24,13 @@
 // ---- test settings ----
 const int COMMANDS[] = {40, -40, 80, -80, 120, -120, 160, -160, 200, -200, 240, -240, 280, -280, 320, -320};
 const int N_COMMANDS = sizeof(COMMANDS) / sizeof(COMMANDS[0]);
-const int RUNS = 3;                  // runs per command
-const unsigned long PAUSE_MS = 1500; // rest between runs so the motor stops
+const int RUNS = 1;                  // runs per command (1 keeps the full sweep to about 3 min)
+const unsigned long RUN_MS = 10300;  // run length: BaseCodeOne runs 15500 ms; 10300 ms still covers the 5-10 s window
+const unsigned long PAUSE_MS = 1000; // rest between runs so the motor stops
 
 // ---- BaseCodeOne variables ----
 // unsigned long instead of BaseCodeOne's int: an int overflows after 32.7 s and a sweep runs for minutes
-unsigned long b = 0; // reading the time for main loop to be run for 15s
+unsigned long b = 0; // reading the time for main loop to be run for RUN_MS
 unsigned long c = 0; // memory for the time in mainloop
 
 float s = 0; // built-in encoder counts
@@ -177,7 +179,7 @@ void printWindow(int command, int run, unsigned long windowEnd)
   Serial.println(opticalRPM - builtinRPM, 2);
 }
 
-// One 15 s run, copied from BaseCodeOne's loop() with the optical encoder added.
+// One run of RUN_MS, copied from BaseCodeOne's loop() with the optical encoder added.
 void runOnce(int command, int run)
 {
   RPM = abs(command);
@@ -197,7 +199,7 @@ void runOnce(int command, int run)
   b = millis(); // reading time
   c = b;        // storing the current time
 
-  while ((b >= c) && (b <= (c + 15500))) // let the main loop to be run for 15s
+  while ((b >= c) && (b <= (c + RUN_MS))) // let the main loop run for RUN_MS
   {
     if (b % 13 == 0 && repc == 1) // PI controller
     {
@@ -286,7 +288,7 @@ void runOnce(int command, int run)
 
 void printHelp()
 {
-  Serial.println("# Type 0 and press Enter for the full sweep (+-40 to +-320 RPM, 3 runs each, ~15 min),");
+  Serial.println("# Type 0 and press Enter for the full sweep (+-40 to +-320 RPM, 1 run each, ~3 min),");
   Serial.println("# or type one speed (e.g. -120) to test only that command.");
 }
 

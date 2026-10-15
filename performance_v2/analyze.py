@@ -15,7 +15,7 @@ controller does not reach the commanded value exactly.
 Options:
   --data DIR        folder with the logs (default: data/)
   --out DIR         folder for the results (default: results/)
-  --window 5|10|15|all   which quadrature window to use (default 10 = the 5-10 s demo window)
+  --window 5|10|all      which quadrature window to use (default 10 = the 5-10 s demo window)
   --pair A1 A5      the two quadrature channels in RAW captures (default A1 A5)
 """
 
@@ -92,7 +92,7 @@ def parse(columns, fields, source):
 def stats(errors):
     e = np.asarray(errors, dtype=float)
     abs_e = np.sort(np.abs(e))
-    best = max(len(e) - 2, 1)  # the demo's "8 best out of 10"
+    best = len(e) - 2 if len(e) >= 10 else len(e)  # the demo's "8 best out of 10"; fewer than 10: all of them
     return {
         "n": len(e),
         "mean_error": e.mean(),
@@ -324,7 +324,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data", type=Path, default=HERE / "data")
     parser.add_argument("--out", type=Path, default=HERE / "results")
-    parser.add_argument("--window", default="10", choices=["5", "10", "15", "all"])
+    parser.add_argument("--window", default="10", choices=["5", "10", "all"])
     parser.add_argument("--pair", nargs=2, default=["A1", "A5"], metavar=("A", "B"))
     args = parser.parse_args()
 

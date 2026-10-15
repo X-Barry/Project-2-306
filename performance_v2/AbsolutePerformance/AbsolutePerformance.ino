@@ -1,20 +1,20 @@
 /*
   AbsolutePerformance - automated performance test of the absolute encoder.
 
-  Runs BaseCodeTwo's positioning test (10 moves of 4 s each) for every angle in COMMANDS[],
+  Runs BaseCodeTwo's 4 s positioning move REPS times for every angle in COMMANDS[],
   one after the other, without resetting the board. The PI controller and the built-in encoder
   counting are copied from BaseCodeTwo unchanged, so the motor behaves as in the demo.
 
   How to use (Arduino IDE):
     1. Upload, open the Serial Monitor at 250000 baud.
-    2. Type 0 and press Enter to run the full sweep (+-20 to +-90 deg, about 13 minutes),
+    2. Type 0 and press Enter to run the full sweep (+-20 to +-90 deg, 2 moves each, about 3 minutes),
        or type one angle (e.g. -30) to test only that command.
     3. When "# done" appears, copy everything from the Serial Monitor into a text file in
        performance_v2/data/ and run analyze.py.
 
   Output, one line per move ("own" = our absolute encoder, error = own - builtin):
     ABS,cmd_deg,rep,dir_cmd,dir_own,builtin_deg,own_deg,error_deg,own_pos_deg
-  A summary per command (mean / std / max error and the demo's best-8-of-10 average) is printed
+  A summary per command (mean / std / max error, and the demo's best-8-of-10 average when REPS >= 10) is printed
   as # comment lines, which analyze.py ignores.
 
   Absolute.h / Absolute.cpp are copies of demo/BaseCodeTwo-Absolute/ (the Arduino IDE only
@@ -26,7 +26,7 @@
 // ---- test settings ----
 const int COMMANDS[] = {20, -20, 30, -30, 40, -40, 50, -50, 60, -60, 70, -70, 80, -80, 90, -90};
 const int N_COMMANDS = sizeof(COMMANDS) / sizeof(COMMANDS[0]);
-const int REPS = 10;                 // moves per command, as in BaseCodeTwo
+const int REPS = 2;                  // moves per command (BaseCodeTwo does 10; 2 keeps the full sweep to about 3 min)
 const int OWN_DIRECTION_SIGN = +1;   // set to -1 if dir_own always comes out opposite to dir_cmd
 const unsigned long PAUSE_MS = 1000; // rest between commands
 
@@ -183,7 +183,7 @@ void printSummary(int directionCorrect)
   float mean = sum / REPS;
   float stdDev = sqrt(max(0.0, (sumSq - REPS * mean * mean) / (REPS - 1)));
 
-  // best 8 of 10: drop the two largest unsigned errors
+  // best 8 of 10: drop the two largest unsigned errors (only when there are at least 10)
   for (int i = 1; i < REPS; i++) // insertion sort, smallest first
   {
     float v = absErr[i];
@@ -195,7 +195,7 @@ void printSummary(int directionCorrect)
     }
     absErr[j + 1] = v;
   }
-  int best = REPS > 2 ? REPS - 2 : REPS;
+  int best = REPS >= 10 ? REPS - 2 : REPS; // fewer than 10 moves: average them all
   float bestSum = 0;
   for (int i = 0; i < best; i++)
   {
@@ -220,7 +220,7 @@ void printSummary(int directionCorrect)
 
 void printHelp()
 {
-  Serial.println("# Type 0 and press Enter for the full sweep (+-20 to +-90 deg, ~13 min),");
+  Serial.println("# Type 0 and press Enter for the full sweep (+-20 to +-90 deg, 2 moves each, ~3 min),");
   Serial.println("# or type one angle (e.g. -30) to test only that command.");
 }
 
