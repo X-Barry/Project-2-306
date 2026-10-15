@@ -16,9 +16,12 @@ int finish = 0;            // finish indicator
 int rep = 1;               // Repetition indicator
 Absolute absolute(100, 5); // Create an instance of the Absolute class with threshold=100, resolution=5 (pins A1-A5)
 
+bool commandedCCW = false; // direction typed in by the user ("-" for CCW), shown next to the builtin encoder reading
+float absErrors[10];       // unsigned error of each of the 10 positionings, for the best 8 of 10 average
+
 void setup()
 {
-  absolute.update();    // First absolute sensor reading (home position)
+  absolute.update();    // First absolute sensor reading (starting position)
   Serial.begin(250000); // Baud rate of communication
 
   Serial.println("Enter the desired rotation in degree.");
@@ -32,6 +35,7 @@ void setup()
   if (deg < 0)
   {
     analogWrite(3, 255); // change the direction of rotation by applying voltage to pin 3 of arduino
+    commandedCCW = true;
   }
   deg = abs(deg);
 }
@@ -109,13 +113,38 @@ void loop()
                                                                : "NONE"); // displaying the displacement and direction of rotation from absolute sensor
 
     Serial.print("Shaft displacement from motor's builtin encoder: ");
-    Serial.println(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin
-                                   // encoder so to turn it to degre we can use this formula (s * 360 / 228), "s" is the number of  built-in encoder counts
+    Serial.print(s * 360 / 228); // every full Revolution of the shaft is associated with 228 counts of builtin
+                                 // encoder so to turn it to degre we can use this formula (s * 360 / 228), "s" is the number of  built-in encoder counts
+    Serial.print(" degrees, Commanded direction: ");
+    Serial.println(commandedCCW ? "CCW" : "CW");
 
     float Error = absolute.getDisplacement() - s * 360 / 228;
     Serial.print("Error :");
     Serial.println(Error); // displaying error
     Serial.println();
+
+    absErrors[rep - 2] = fabs(Error); // rep was already increased above, so this is positioning number rep - 1
+    if (rep > 10)
+    {
+      // after the 10th positioning: drop the two largest unsigned errors and average the best 8
+      float sum = 0, worst = 0, secondWorst = 0;
+      for (int i = 0; i < 10; i++)
+      {
+        sum += absErrors[i];
+        if (absErrors[i] > worst)
+        {
+          secondWorst = worst;
+          worst = absErrors[i];
+        }
+        else if (absErrors[i] > secondWorst)
+        {
+          secondWorst = absErrors[i];
+        }
+      }
+      Serial.print("Average unsigned error over the best 8 of 10 positionings: ");
+      Serial.println((sum - worst - secondWorst) / 8);
+      Serial.println();
+    }
     s = 0;
     finish = 0;
   }

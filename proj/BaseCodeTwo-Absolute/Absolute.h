@@ -45,7 +45,7 @@ public:
    // Direction of the displacement since the last resetDisplacement()
    Direction getDirection()
    {
-      return totalDisplacement > 0 ? Direction::CW : totalDisplacement < 0 ? Direction::CCW : Direction::NONE;
+      return totalDisplacement > 0 ? Direction::CCW : totalDisplacement < 0 ? Direction::CW : Direction::NONE;
    }
 
 private:
@@ -55,7 +55,7 @@ private:
    bool hasReading;     // false until the first update(), so the first reading isn't counted as a move
    float currentPos;
    float previousPos;
-   float totalDisplacement; // signed, CW positive, since the last resetDisplacement()
+   float totalDisplacement; // signed, CCW positive, since the last resetDisplacement()
    void readAnalogPins();
    void greyToBinary();
    void binaryToAngle();

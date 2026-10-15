@@ -46,7 +46,7 @@ int main(int argc, char **argv)
       expect(fabs(enc.getAngle() - pos * step) < 1e-3, "angle", enc.getAngle(), pos * step);
       if (pos != prev)
         sectors += sign;
-      Direction want = sectors == 0 ? Direction::NONE : sectors > 0 ? Direction::CW : Direction::CCW;
+      Direction want = sectors == 0 ? Direction::NONE : sectors > 0 ? Direction::CCW : Direction::CW;
       if (enc.getDirection() != want && fails < 20)
         printf("  FAIL direction    shaft %7.2f deg: got %s, want %s\n", sim::shaft_deg, name(enc.getDirection()), name(want));
       checks++;

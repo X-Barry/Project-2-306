@@ -63,7 +63,7 @@ void Absolute::greyToBinary()
 }
 
 // Converts the 5 bit binary number to a 0-360 degree angle, and adds the step since the previous
-// reading to the total displacement (CW positive). The step is taken as the shorter way round, so
+// reading to the total displacement (CCW positive). The step is taken as the shorter way round, so
 // the shaft must turn less than 180 degrees between two update() calls.
 void Absolute::binaryToAngle()
 {
@@ -83,12 +83,12 @@ void Absolute::binaryToAngle()
 
     if (diff < 180)
     {
-        // angle increased by diff degrees (e.g. CW), or no movement when diff == 0
+        // angle increased by diff degrees (CCW), or no movement when diff == 0
         totalDisplacement += diff;
     }
     else
     {
-        // angle decreased by (360 - diff) degrees (e.g. CCW)
+        // angle decreased by (360 - diff) degrees (CW)
         totalDisplacement -= 360 - diff;
     }
     return;
